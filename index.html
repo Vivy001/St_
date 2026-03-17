@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中醫智慧系統 (凍結置頂版)</title>
+    <style>
+        :root { --p-color: #2c3e50; --accent: #27ae60; --bg: #f4f7f6; --orange: #e67e22; }
+        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 0; }
+        
+        .container { max-width: 950px; margin: auto; padding-bottom: 50px; }
+
+        /* --- 關鍵優化：凍結置頂面板 --- */
+        .sticky-header {
+            position: -webkit-sticky; /* 支援 Safari */
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: var(--bg);
+            padding: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .panel { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .panel-header { text-align: center; margin-bottom: 10px; }
+        .panel-header h2 { font-size: 18px; color: var(--p-color); margin: 0; }
+
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; width: 100%; box-sizing: border-box; }
+        .btn-group { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+        
+        button { padding: 10px 15px; border: none; border-radius: 20px; cursor: pointer; transition: 0.3s; font-weight: bold; font-size: 14px; flex-grow: 1; }
+        .btn-filter { background: #3498db; color: white; }
+        .btn-sort { background: var(--accent); color: white; }
+        .btn-reset { background: #95a5a6; color: white; }
+
+        /* --- 表格區塊 --- */
+        .main-content { padding: 0 15px; }
+        .table-container { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+        th { background: #eee; color: #333; position: sticky; top: 0; z-index: 10; } /* 表頭也會跟著凍結在控制台下方 */
+        
+        .dist-tag { font-size: 11px; color: var(--orange); background: #fef5e7; padding: 2px 6px; border-radius: 10px; font-weight: bold; white-space: nowrap; }
+
+        /* --- 底部管理區 --- */
+        .footer-admin { margin-top: 40px; padding: 20px; border-top: 1px dashed #ccc; background: #fff; }
+        .grid-input { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 10px; }
+        @media (min-width: 600px) { .grid-input { grid-template-columns: 1.5fr 2fr 1fr 1fr; } }
+        .btn-add { background: var(--orange); color: white; width: 100%; padding: 12px; border-radius: 8px; margin-bottom: 15px; }
+        .btn-clear { background: #d63031; color: white; font-size: 11px; padding: 5px 10px; border-radius: 5px; opacity: 0.6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="sticky-header">
+        <div class="panel">
+            <div class="panel-header"><h2>🎯 智慧排程控制台</h2></div>
+            <input type="text" id="idFilter" placeholder="🔎 輸入序號篩選 (如: 1 3 5)" onkeyup="if(event.keyCode==13) applyFilter()">
+            <div class="btn-group">
+                <button class="btn-filter" onclick="applyFilter()">篩選</button>
+                <button class="btn-sort" onclick="smartSort()">順路排序</button>
+                <button class="btn-reset" onclick="resetAll()">全看</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th width="15%">序號</th>
+                        <th width="45%">店名/地址</th>
+                        <th width="25%">距離</th>
+                        <th width="15%">導</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="footer-admin">
+        <h4 style="margin:0 0 15px 0; color: #7f8c8d;">➕ 管理診所資料庫</h4>
+        <div class="grid-input">
+            <input type="text" id="newName" placeholder="店名">
+            <input type="text" id="newAddr" placeholder="地址">
+            <input type="number" id="newLat" placeholder="緯度" step="any">
+            <input type="number" id="newLng" placeholder="經度" step="any">
+        </div>
+        <button class="btn-add" onclick="addNewClinic()">💾 儲存新診所資料</button>
+        <div style="text-align: center;">
+            <button class="btn-clear" onclick="clearStorage()">⚠️ 清除所有手動資料並還原</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const CENTER = { lat: 24.1568, lng: 120.6817 };
+    
+    // (這裡請貼上原本 69 筆完整的 defaultData 陣列)
+    const defaultData = [
+        {id: 1, n: "北屯順泰中西藥局", a: "北屯路115號", lat: 24.1623, lng: 120.6891},
+        {id: 2, n: "慶和中醫診所", a: "北屯路232-2號", lat: 24.1661, lng: 120.6914},
+        {id: 3, n: "惠民中醫診所", a: "興安路一段270號", lat: 24.1724, lng: 120.6953},
+        {id: 4, n: "安康中醫診所", a: "遼寧路一段193號", lat: 24.1718, lng: 120.6982},
+        {id: 5, n: "崑發中藥行", a: "僑孝街46號", lat: 24.1795, lng: 120.7011},
+        {id: 6, n: "北屯至誠堂中醫", a: "崇德十路一段377號", lat: 24.1882, lng: 120.6845},
+        {id: 7, n: "耀璿中醫診所", a: "豐樂路10-22號", lat: 24.1921, lng: 120.6834},
+        {id: 8, n: "慈恆中醫診所", a: "松和街50號", lat: 24.1756, lng: 120.6912},
+        {id: 9, n: "來佑安中醫診所", a: "熱河路三段67號", lat: 24.1743, lng: 120.6925},
+        {id: 10, n: "北屯扶原中醫", a: "熱河路二段117號", lat: 24.1712, lng: 120.6921},
+        {id: 11, n: "諸元中醫診所", a: "雙十路二段40巷32號", lat: 24.1521, lng: 120.6894},
+        {id: 12, n: "椿生中醫診所", a: "興進路102號", lat: 24.1554, lng: 120.6952},
+        {id: 13, n: "鳴人中醫診所", a: "國泰街96號", lat: 24.1601, lng: 120.6987},
+        {id: 14, n: "同和堂中醫診所", a: "自強街38-1號", lat: 24.1542, lng: 120.6931},
+        {id: 15, n: "恆康中醫診所", a: "山西路三段78號", lat: 24.1891, lng: 120.6724},
+        {id: 16, n: "恆德中醫診所", a: "太平區育賢路376號", lat: 24.1485, lng: 120.7214},
+        {id: 17, n: "藍田玉中醫診所", a: "太平區立功路306號", lat: 24.1492, lng: 120.7241},
+        {id: 18, n: "迦勒堂中醫診所", a: "太平區樹德路89-2號", lat: 24.1512, lng: 120.7185},
+        {id: 19, n: "佳欣中醫診所", a: "太平區育賢路93號", lat: 24.1478, lng: 120.7192},
+        {id: 20, n: "一生堂中藥行", a: "東區力行路80-3號", lat: 24.1481, lng: 120.6912},
+        {id: 21, n: "五禾堂中醫診所", a: "東區自由路四段516號", lat: 24.1412, lng: 120.7094},
+        {id: 22, n: "夏禾中醫診所", a: "建和路二段271號", lat: 24.1685, lng: 120.7152},
+        {id: 23, n: "一念中醫診所", a: "軍福七路70-2號", lat: 24.1721, lng: 120.7184},
+        {id: 24, n: "李藥局", a: "和順路398號", lat: 24.1754, lng: 120.7121},
+        {id: 25, n: "菩心中醫診所", a: "崇德路二段330號", lat: 24.1782, lng: 120.6854},
+        {id: 26, n: "日盛大藥局", a: "東山路一段240號", lat: 24.1751, lng: 120.7082},
+        {id: 27, n: "春元中藥房", a: "崇德路二段41號", lat: 24.1682, lng: 120.6841},
+        {id: 28, n: "春元中醫診所", a: "崇德路二段43號", lat: 24.1683, lng: 120.6842},
+        {id: 29, n: "北屯普門堂中醫", a: "北屯路420號", lat: 24.1752, lng: 120.7014},
+        {id: 30, n: "益成中藥房", a: "昌平路一段151號", lat: 24.1685, lng: 120.6894},
+        {id: 31, n: "東山路昌生中藥房", a: "東山路一段186號", lat: 24.1742, lng: 120.7052},
+        {id: 32, n: "潭子吉安堂中醫", a: "潭子區中山路一段19號", lat: 24.1985, lng: 120.7012},
+        {id: 33, n: "皇杰大藥局", a: "北屯路439-16號", lat: 24.1762, lng: 120.7021},
+        {id: 34, n: "傳承中醫診所", a: "旅順路二段296號", lat: 24.1742, lng: 120.6852},
+        {id: 35, n: "其澤中醫診所", a: "昌平路二段12-1號", lat: 24.1751, lng: 120.6882},
+        {id: 36, n: "保成中醫診所", a: "中清路二段226號", lat: 24.1782, lng: 120.6652},
+        {id: 37, n: "六福堂中醫診所", a: "崇德路二段210號", lat: 24.1752, lng: 120.6851},
+        {id: 38, n: "上宇藥局", a: "松竹路二段153號", lat: 24.1812, lng: 120.6914},
+        {id: 39, n: "乙仁中醫診所", a: "松竹路二段382-3號", lat: 24.1815, lng: 120.6821},
+        {id: 40, n: "救世堂中藥房", a: "東山路一段185號", lat: 24.1741, lng: 120.7042},
+        {id: 41, n: "頭張路昌生中醫", a: "潭子區頭張路二段36號", lat: 24.2021, lng: 120.7025},
+        {id: 42, n: "仁美堂中醫診所", a: "昌平路二段131號", lat: 24.1852, lng: 120.6841},
+        {id: 43, n: "崇德十路昌生中醫", a: "崇德十路一段490號", lat: 24.1882, lng: 120.6812},
+        {id: 44, n: "崇德中醫診所", a: "崇德路二段11號", lat: 24.1652, lng: 120.6841},
+        {id: 45, n: "北屯德濟中醫", a: "北屯路382號", lat: 24.1732, lng: 120.7011},
+        {id: 46, n: "光華中醫診所", a: "北屯路246號", lat: 24.1682, lng: 120.6952},
+        {id: 47, n: "益安中醫診所", a: "松竹路二段138號", lat: 24.1812, lng: 120.6931},
+        {id: 48, n: "北屯益民中藥房", a: "北屯路41號", lat: 24.1562, lng: 120.6892},
+        {id: 49, n: "華安中醫診所", a: "昌平路一段330號", lat: 24.1721, lng: 120.6894},
+        {id: 50, n: "鄧內科中醫診所", a: "崇德路二段58號", lat: 24.1685, lng: 120.6845},
+        {id: 51, n: "仲軒堂中醫診所", a: "大連路三段102號", lat: 24.1732, lng: 120.6912},
+        {id: 52, n: "兆陽國術館", a: "大連路三段140號", lat: 24.1735, lng: 120.6931},
+        {id: 53, n: "大連路聯合中醫", a: "大連路二段221號", lat: 24.1731, lng: 120.6885},
+        {id: 54, n: "匯智中醫診所", a: "北屯路232-1號", lat: 24.1662, lng: 120.6915},
+        {id: 55, n: "德安中藥房", a: "昌平路一段105號", lat: 24.1652, lng: 120.6891},
+        {id: 56, n: "正新中醫診所", a: "昌平路一段332號", lat: 24.1725, lng: 120.6895},
+        {id: 57, n: "大同參藥行", a: "進化北路15號", lat: 24.1592, lng: 120.6891},
+        {id: 58, n: "春回合中醫診所", a: "旅順路二段137號", lat: 24.1731, lng: 120.6881},
+        {id: 59, n: "全民中醫診所", a: "崇德路二段1號", lat: 24.1642, lng: 120.6841},
+        {id: 60, n: "平安中醫診所", a: "崇德路一段522號", lat: 24.1625, lng: 120.6842},
+        {id: 61, n: "崇德路仁心堂", a: "崇德路一段586號", lat: 24.1631, lng: 120.6835},
+        {id: 62, n: "榮華中醫診所", a: "崇德路二段130號", lat: 24.1712, lng: 120.6841},
+        {id: 63, n: "聖明中醫診所", a: "軍功路二段12號", lat: 24.1752, lng: 120.7212},
+        {id: 64, n: "群復中醫診所", a: "北屯路192-3號", lat: 24.1652, lng: 120.6941},
+        {id: 65, n: "恆安中醫診所", a: "昌平路一段42號", lat: 24.1632, lng: 120.6895},
+        {id: 66, n: "芊華中醫診所", a: "山西路二段213號", lat: 24.1785, lng: 120.6752},
+        {id: 67, n: "宏臻中醫診所", a: "軍功路一段535號", lat: 24.1621, lng: 120.7231},
+        {id: 68, n: "英全藥局", a: "進化北路43號", lat: 24.1601, lng: 120.6881},
+        {id: 69, n: "李德茂中醫診所", a: "崇德路一段508號", lat: 24.1618, lng: 120.6841}
+    ];
+
+    let allData = [];
+    let displayList = [];
+
+    function init() {
+        const saved = localStorage.getItem('tcm_data');
+        if (saved && JSON.parse(saved).length > 0) {
+            allData = JSON.parse(saved);
+        } else {
+            allData = [...defaultData];
+            localStorage.setItem('tcm_data', JSON.stringify(allData));
+        }
+        displayList = [...allData];
+        render(displayList);
+    }
+
+    function getDistance(p1, p2) {
+        const R = 6371;
+        const dLat = (p2.lat - p1.lat) * Math.PI / 180;
+        const dLng = (p2.lng - p1.lng) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(p1.lat * Math.PI / 180) * Math.cos(p2.lat * Math.PI / 180) * Math.sin(dLng/2) * Math.sin(dLng/2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function render(list) {
+        const tbody = document.getElementById('tbody');
+        tbody.innerHTML = list.map(i => {
+            const dist = getDistance(CENTER, i).toFixed(2);
+            return `<tr>
+                <td><b>${i.id}</b></td>
+                <td><strong>${i.n}</strong><br><small style="color:#666">${i.a}</small></td>
+                <td><span class="dist-tag">${dist} km</span></td>
+                <td><a href="https://www.google.com/maps/dir/${encodeURIComponent(i.a)}" target="_blank" style="text-decoration:none;">📍</a></td>
+            </tr>`;
+        }).join('');
+    }
+
+    function applyFilter() {
+        const input = document.getElementById('idFilter').value;
+        const ids = input.split(/[\s,，]+/).map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+        displayList = ids.length === 0 ? [...allData] : allData.filter(item => ids.includes(item.id));
+        render(displayList);
+    }
+
+    function smartSort() {
+        displayList.sort((a, b) => getDistance(CENTER, a) - getDistance(CENTER, b));
+        render(displayList);
+    }
+
+    function resetAll() {
+        document.getElementById('idFilter').value = "";
+        displayList = [...allData];
+        render(displayList);
+    }
+
+    function addNewClinic() {
+        const n = document.getElementById('newName').value;
+        const a = document.getElementById('newAddr').value;
+        const lat = parseFloat(document.getElementById('newLat').value);
+        const lng = parseFloat(document.getElementById('newLng').value);
+        if (!n || !a || isNaN(lat) || isNaN(lng)) return alert("請填寫完整");
+        
+        const newId = allData.length > 0 ? Math.max(...allData.map(d => d.id)) + 1 : 1;
+        allData.push({ id: newId, n: n, a: a, lat: lat, lng: lng });
+        localStorage.setItem('tcm_data', JSON.stringify(allData));
+        resetAll();
+        alert("新增成功！");
+    }
+
+    function clearStorage() {
+        if(confirm("重置所有資料？")) {
+            localStorage.removeItem('tcm_data');
+            location.reload();
+        }
+    }
+
+    init();
+</script>
+</body>
+</html>
