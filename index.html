@@ -3,55 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>中醫巡迴智慧系統</title>
+    <title>中醫巡迴智慧系統 (已修正)</title>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         :root { --p-color: #2c3e50; --accent: #27ae60; --bg: #f4f7f6; --orange: #e67e22; --selected: #e8f5e9; }
         body { font-family: "PingFang TC", sans-serif; background: var(--bg); margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        
-        /* 頂部固定面板 */
-        .sticky-header {
-            position: sticky; top: 0; z-index: 1000;
-            background: white; padding: 12px 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
+        .sticky-header { position: sticky; top: 0; z-index: 1000; background: white; padding: 12px 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .info-bar { font-size: 14px; color: #666; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .info-bar b { color: var(--orange); font-size: 18px; }
-
         .btn-group { display: flex; gap: 8px; }
         button { flex: 1; padding: 12px; border: none; border-radius: 25px; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s; }
-        
         .btn-go { background: var(--accent); color: white; box-shadow: 0 4px 6px rgba(39, 174, 96, 0.2); }
         .btn-reset { background: #95a5a6; color: white; }
-
         .hint { text-align: center; font-size: 11px; color: #aaa; margin-top: 6px; }
-
-        /* 清單容器 */
         .list-container { padding: 12px; padding-bottom: 100px; }
-        .item-card {
-            background: white; margin-bottom: 10px; padding: 12px 15px;
-            border-radius: 12px; border: 1px solid #eee;
-            display: flex; align-items: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            touch-action: none; /* 重要：防止拖曳時跳動 */
-        }
-        
-        /* 選中狀態 */
+        .item-card { background: white; margin-bottom: 10px; padding: 12px 15px; border-radius: 12px; border: 1px solid #eee; display: flex; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); touch-action: none; }
         .item-card.selected { background: var(--selected); border-color: var(--accent); }
         .sortable-ghost { opacity: 0.3; background: #c8ebfb; }
-
         .handle { color: #ddd; margin-right: 12px; font-size: 20px; cursor: grab; padding: 5px; }
-        
         .item-info { flex: 1; }
         .item-n { font-weight: bold; font-size: 16px; color: var(--p-color); margin-bottom: 2px; }
         .item-a { font-size: 12px; color: #7f8c8d; }
-        
         .item-side { text-align: right; min-width: 65px; }
         .dist-tag { font-size: 10px; color: var(--orange); background: #fff5e6; padding: 2px 6px; border-radius: 8px; font-weight: bold; }
         .nav-link { display: block; margin-top: 6px; font-size: 24px; text-decoration: none; }
-
-        /* 管理區域 */
         .admin-section { padding: 20px; background: #fff; border-top: 1px dashed #ccc; margin-top: 20px; }
         .grid-in { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 10px; }
         input { padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
@@ -69,7 +44,7 @@
         <button class="btn-go" onclick="generateSchedule()">🚀 自動排序</button>
         <button class="btn-reset" onclick="resetAll()">🔃 顯示全部</button>
     </div>
-    <div class="hint">排序後，可長按卡片上下拖曳微調順序</div>
+    <div class="hint">排序後，可長按 ☰ 圖示上下拖曳微調順序</div>
 </div>
 
 <div class="list-container" id="mainList"></div>
@@ -94,7 +69,7 @@
     let selectedIds = new Set();
     let isFiltered = false;
 
-    // 完整 69 筆資料
+    // 完整的 69 筆資料庫
     const defaultData = [
         {id: 1, n: "北屯順泰中西藥局", a: "北屯路115號", lat: 24.1623, lng: 120.6891},
         {id: 2, n: "慶和中醫診所", a: "北屯路232-2號", lat: 24.1661, lng: 120.6914},
@@ -131,7 +106,8 @@
         {id: 33, n: "皇杰大藥局", a: "北屯路439-16號", lat: 24.1762, lng: 120.7021},
         {id: 34, n: "傳承中醫診所", a: "旅順路二段296號", lat: 24.1742, lng: 120.6852},
         {id: 35, n: "其澤中醫診所", a: "昌平路二段12-1號", lat: 24.1751, lng: 120.6882},
-        {id: 36, n: "保成中醫診所", a: "中清路二段226號", lat: 24.1782, lng: 120.6652},
+        // --- 編號 36 已修正為潭子區 ---
+        {id: 36, n: "保成中醫診所", a: "潭子區中山路二段386號", lat: 24.2123, lng: 120.7056},
         {id: 37, n: "六福堂中醫診所", a: "崇德路二段210號", lat: 24.1752, lng: 120.6851},
         {id: 38, n: "上宇藥局", a: "松竹路二段153號", lat: 24.1812, lng: 120.6914},
         {id: 39, n: "乙仁中醫診所", a: "松竹路二段382-3號", lat: 24.1815, lng: 120.6821},
@@ -169,16 +145,20 @@
 
     function init() {
         const saved = localStorage.getItem('tcm_data');
-        allData = (saved && JSON.parse(saved).length > 0) ? JSON.parse(saved) : defaultData;
+        // 如果本地已有存檔，我們需要強制檢查並更新編號 36 的資料
+        let data = (saved && JSON.parse(saved).length > 0) ? JSON.parse(saved) : [...defaultData];
+        
+        // 修正邏輯：確保 36 號如果是舊的北屯地址，則強制更正為潭子地址
+        data = data.map(item => item.id === 36 ? defaultData.find(d => d.id === 36) : item);
+        
+        allData = data;
+        localStorage.setItem('tcm_data', JSON.stringify(allData));
         render(allData);
         
-        // 啟用拖曳微調功能
-        const el = document.getElementById('mainList');
-        Sortable.create(el, {
+        Sortable.create(document.getElementById('mainList'), {
             animation: 150,
-            handle: '.handle', // 抓取圖示進行拖曳
-            ghostClass: 'sortable-ghost',
-            onEnd: function() { console.log("順序已微調"); }
+            handle: '.handle',
+            ghostClass: 'sortable-ghost'
         });
     }
 
@@ -214,7 +194,7 @@
     }
 
     function toggleSelect(id, el) {
-        if (isFiltered) return; // 排程模式下鎖定選取，僅允許拖曳順序
+        if (isFiltered) return;
         if (selectedIds.has(id)) {
             selectedIds.delete(id);
             el.classList.remove('selected');
@@ -226,7 +206,7 @@
     }
 
     function generateSchedule() {
-        if (selectedIds.size === 0) return alert("請先選取要去的地點！");
+        if (selectedIds.size === 0) return alert("請先選取地點！");
         isFiltered = true;
         let filtered = allData.filter(i => selectedIds.has(i.id));
         filtered.sort((a, b) => getDistance(CENTER, a) - getDistance(CENTER, b));
@@ -247,7 +227,6 @@
         const lat = parseFloat(document.getElementById('newLat').value);
         const lng = parseFloat(document.getElementById('newLng').value);
         if (!n || !a || isNaN(lat) || isNaN(lng)) return alert("請填寫完整");
-        
         const newId = allData.length > 0 ? Math.max(...allData.map(d => d.id)) + 1 : 1;
         allData.push({ id: newId, n: n, a: a, lat: lat, lng: lng });
         localStorage.setItem('tcm_data', JSON.stringify(allData));
